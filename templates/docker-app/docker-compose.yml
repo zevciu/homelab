@@ -1,0 +1,126 @@
+services:
+  app:
+    container_name: app
+
+    # --- IMAGE / BUILD ---
+    image: nginx:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_ENV: production
+
+    # --- RESTART POLICY ---
+    restart: unless-stopped
+
+    # --- PORTS ---
+    ports:
+      - "80:80"
+      - "443:443"
+
+    # --- NETWORK ---
+    networks:
+      - app_net
+
+    # --- VOLUMES ---
+    volumes:
+      - ./data:/data
+      - ./config:/etc/app
+      - app_logs:/var/log/app
+
+    # --- ENVIRONMENT ---
+    environment:
+      - TZ=Europe/Warsaw
+      - APP_ENV=production
+
+    env_file:
+      - .env
+
+    # --- DEPENDENCIES ---
+    depends_on:
+      - db
+
+    # --- HEALTHCHECK ---
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+    # --- COMMAND ---
+    command: ["nginx", "-g", "daemon off;"]
+
+    # --- ENTRYPOINT ---
+    entrypoint: []
+
+    # --- USER ---
+    user: "1000:1000"
+
+    # --- WORKDIR ---
+    working_dir: /app
+
+    # --- SECURITY ---
+    privileged: false
+    read_only: false
+
+    cap_add:
+      - NET_ADMIN
+
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    # --- RESOURCES ---
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+    # --- LOGGING ---
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # --- EXTRA ---
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    dns:
+      - 1.1.1.1
+
+    sysctls:
+      net.core.somaxconn: 1024
+
+    tmpfs:
+      - /tmp
+
+    stdin_open: true
+    tty: true
+
+# --- NETWORKS ---
+networks:
+  app_net:
+    driver: bridge
+
+# --- VOLUMES ---
+volumes:
+  app_logs:
+
+# --- SECRETS ---
+secrets:
+  my_secret:
+    file: ./secrets/my_secret.txt
+
+# --- CONFIGS ---
+configs:
+  my_config:
+    file: ./configs/app.conf
