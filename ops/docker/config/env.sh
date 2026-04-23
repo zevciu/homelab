@@ -61,7 +61,6 @@ source "$HELPERS_DIR/run.sh"
 source "$HELPERS_DIR/confirm_action.sh"
 source "$HELPERS_DIR/global_flags.sh"
 
-source "$GLOBAL_OPS_DOCKER_LIB_DIR/fs.sh"
 source "$GLOBAL_OPS_DOCKER_LIB_DIR/set_status.sh"
 source "$GLOBAL_OPS_DOCKER_LIB_DIR/get_status.sh"
 source "$GLOBAL_OPS_DOCKER_LIB_DIR/get_runtime_state.sh"

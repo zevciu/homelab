@@ -103,10 +103,13 @@ bootstrap_config() {
             local dst="${entry%%:*}"
             local src="${entry##*:}"
 
-            run docker cp "$container:$src" "$target_dir/$dst" \
-                || die "copy failed: $dst"
-
-            log_ok "copied: $dst"
+            if run docker cp "$container:$src" "$target_dir/$dst"; then
+                log_ok "copied: $dst"
+	    else
+		log_warn "copy procedure encountered fatal error"
+		stop_containers
+    		die "copy failed: $dst"
+	    fi
         done
     }
 
