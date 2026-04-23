@@ -37,7 +37,7 @@ set -euo pipefail
 REPO_DIR="$(git rev-parse --show-toplevel)"
 
 CHANGELOG_FILE="$REPO_DIR/CHANGELOG.md"
-VERSION_FILE="METADATA.json"
+VERSION_FILE="$REPO_DIR/METADATA.json"
 DEFAULT_VERSION="1.0.0"
 
 # ==============================================================================
@@ -129,48 +129,51 @@ EOF
         local commits="$1"
         local added="" changed="" fixed="" security="" removed=""
 
-        while IFS= read -r line; do
-            [ -z "$line" ] && continue
+        while IFS= read -r line || [[ -n "$line" ]]; do
+    		[ -z "$line" ] && continue
 
-            local msg="${line#*: }"
-            [ "$msg" = "$line" ] && msg="$line"
+    		# --- extract type (prefix before colon) ---
+    		local type=""
+    		local msg="$line"
 
-            case "$line" in
-                feat*|feature*)
-                    added="${added}- ${msg}"$'\n'
-                    ;;
-                fix*|bugfix*)
-                    fixed="${fixed}- ${msg}"$'\n'
-                    ;;
-                change*|changed*)
-                    changed="${changed}- ${msg}"$'\n'
-                    ;;
-                security*)
-                    security="${security}- ${msg}"$'\n'
-                    ;;
-                remove*|removed*)
-                    removed="${removed}- ${msg}"$'\n'
-                    ;;
-                test*|testing*)
-                    added="${added}- [Test] ${msg}"$'\n'
-                    ;;
-                refactor*|refactoring*)
-                    changed="${changed}- [Refactor] ${msg}"$'\n'
-                    ;;
-                chore*|maintenance*)
-                    changed="${changed}- [Chore] ${msg}"$'\n'
-                    ;;
-                docs*|doc*)
-                    changed="${changed}- [Docs] ${msg}"$'\n'
-                    ;;
-                style*)
-                    changed="${changed}- [Style] ${msg}"$'\n'
-                    ;;
-                *)
-                    added="${added}- ${msg}"$'\n'
-                    ;;
-            esac
-        done <<< "$commits"
+    		if [[ "$line" == *:* ]]; then
+        	    type="${line%%:*}"
+        	    msg="${line#*: }"
+    		fi
+
+    		# --- normalize type (capitalize first letter) ---
+    		local tag=""
+    		if [ -n "$type" ]; then
+        	    tag="[$(echo "$type" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')] "
+    		fi
+
+    		# --- strip existing tags like [Docs], [Feat] ---
+                local msg_clean="$msg"
+	        msg_clean="$(echo "$msg" | sed 's/^\[[^]]*\] //')"
+                msg_clean="${msg_clean,,}"
+
+    		# --- classify by meaning ---
+    		if [[ "$msg_clean" =~ (add|create|introduce|implement|init|initial) ]]; then
+        	    added="${added}- ${tag}${msg}"$'\n'
+
+    		elif [[ "$msg_clean" =~ (update|change|modify|refactor|improve) ]]; then
+        	    changed="${changed}- ${tag}${msg}"$'\n'
+
+    		elif [[ "$msg_clean" =~ (fix|resolve|bugfix|patch|correct) ]]; then
+        	    fixed="${fixed}- ${tag}${msg}"$'\n'
+
+    		elif [[ "$msg_clean" =~ (remove|delete|drop|cleanup) ]]; then
+        	    removed="${removed}- ${tag}${msg}"$'\n'
+
+    		elif [[ "$msg_clean" =~ (security) ]]; then
+        	    security="${security}- ${tag}${msg}"$'\n'
+
+    		else
+        	    # fallback
+        	    added="${added}- ${tag}${msg}"$'\n'
+    		fi
+
+	done <<< "$commits"
 
         echo "ADDED:$added"
         echo "CHANGED:$changed"
@@ -188,11 +191,30 @@ EOF
 
         # --- extract sections from categorized commits ---
         local added changed fixed security removed
-        added=$(echo "$categorized" | grep "^ADDED:" | sed 's/^ADDED://')
-        changed=$(echo "$categorized" | grep "^CHANGED:" | sed 's/^CHANGED://')
-        fixed=$(echo "$categorized" | grep "^FIXED:" | sed 's/^FIXED://')
-        security=$(echo "$categorized" | grep "^SECURITY:" | sed 's/^SECURITY://')
-        removed=$(echo "$categorized" | grep "^REMOVED:" | sed 's/^REMOVED://')
+        added=$(echo "$categorized" | awk '
+    		/^ADDED:/ {flag=1; sub(/^ADDED:/,""); print; next}
+    		/^CHANGED:/ {flag=0}
+    		flag
+	')
+        changed=$(echo "$categorized" | awk '
+    		/^CHANGED:/ {flag=1; sub(/^CHANGED:/,""); print; next}
+    		/^FIXED:/ {flag=0}
+    		flag
+	')
+        fixed=$(echo "$categorized" | awk '
+    		/^FIXED:/ {flag=1; sub(/^FIXED:/,""); print; next}
+    		/^SECURITY:/ {flag=0}
+    		flag
+	')
+        security=$(echo "$categorized" | awk '
+    		/^SECURITY:/ {flag=1; sub(/^SECURITY:/,""); print; next}
+    		/^REMOVED:/ {flag=0}
+    		flag
+	')
+        removed=$(echo "$categorized" | awk '
+    		/^REMOVED:/ {flag=1; sub(/^REMOVED:/,""); print; next}
+    		flag
+	')
 
         # --- create temporary file ---
         local temp_file
