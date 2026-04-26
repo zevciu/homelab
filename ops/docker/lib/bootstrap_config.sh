@@ -32,6 +32,10 @@
 #   0 on success
 #   0 if config already exists (skipped)
 #   1 on failure (container unhealthy, copy failed)
+#
+# NOTES:
+# --- reconsider and/or test the flow for --dry run flag in this function ---
+# --- reconsider applying set_status here or cli.sh. Alternatively validate if INIT status already set, then skip & only log_debug ---
 # -----------------------------------------------------------------------------
 
 # ==============================================================================
@@ -108,6 +112,7 @@ bootstrap_config() {
 	    else
 		log_warn "copy procedure encountered fatal error"
 		stop_containers
+		set_status "$service" "$ops_service_config_dir" "BROKEN"
     		die "copy failed: $dst"
 	    fi
         done

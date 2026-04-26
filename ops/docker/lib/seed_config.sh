@@ -53,10 +53,20 @@ seed_config() {
     # VALIDATION
     # ---------------------------------------------------------------------------
 
-    # --- check if config already exists ---
-    if [ -d "$ops_service_config_dir" ] && [ "$(ls -A "$ops_service_config_dir" 2>/dev/null)" ]; then
-        log_warn "$service → seed skipped (config exists)"
-        return 0
+    # --- check if seed files already exist ---
+    local all_exist=true
+
+    for file in "${seed_files[@]}"; do
+    	local path="$ops_service_config_dir/$file"
+    	if [ ! -f "$path" ]; then
+            all_exist=false
+            break
+    	fi
+    done
+
+    if [ "$all_exist" = true ]; then
+    	log_warn "$service → seed skipped (files exist)"
+    	return 0
     fi
 
     # ---------------------------------------------------------------------------

@@ -191,39 +191,60 @@ EOF
         # --- batch commands ---
         init|plan|status)
             for service in "${SERVICES[@]}"; do
-                local config_type_var="CONFIG_TYPE_$service"
-                local config_type="${!config_type_var}"
 
                 local ops_service_config_dir="$PROJECT_OPS_ROOT/$service"
                 local runtime_service_config_dir="$PROJECT_RUNTIME_ROOT/$service"
 
                 case "$cmd" in
                     init)
-                        case "$config_type" in
-                            managed)
-                                local map_var="FILES_MAP_$service"
-                                declare -n files_map_ref="$map_var"
+                        local flow_var="INIT_FLOW_$service"
 
-                                bootstrap_config \
-                                    "$service" \
-                                    "$ops_service_config_dir" \
-                                    "$BOOTSTRAP_COMPOSE" \
-                                    "${files_map_ref[@]}"
-                                ;;
-                            hybrid)
-                                local seed_var="SEED_FILES_$service"
-                                declare -n seed_files_ref="$seed_var"
+                	# --- validate if flow exists ---
+                	if ! declare -p "$flow_var" &>/dev/null; then
+                    	    log_warn "$service → no INIT_FLOW defined (skip)"
+                    	    continue
+                	fi
 
-                                seed_config \
-                                    "$service" \
-                                    "$ops_service_config_dir" \
-                                    "${seed_files_ref[@]}"
-                                ;;
-                            self)
-                                log_warn "$service → self-managed (skip)"
-                                ;;
-                        esac
-                        ;;
+                	declare -n flow_ref="$flow_var"
+
+                	for step_def in "${flow_ref[@]}"; do
+                    	    # --- parse step:param ---
+                    	    if [[ "$step_def" != *:* ]]; then
+                        	die "$service → invalid step definition: $step_def"
+                    	    fi
+
+                    	    local step="${step_def%%:*}"
+                    	    local param="${step_def##*:}"
+
+                    	    # --- resolve data source ---
+                    	    local var_name="${param}_${service}"
+                    	    if ! declare -p "$var_name" &>/dev/null; then
+                        	die "$service → missing variable: $var_name"
+                    	    fi
+
+                    	    declare -n data_ref="$var_name"
+
+                    	    # --- dispatch ---
+                    	    case "$step" in
+                        	bootstrap)
+                            	    bootstrap_config \
+                                        "$service" \
+                                        "$ops_service_config_dir" \
+                                        "$BOOTSTRAP_COMPOSE" \
+                                        "${data_ref[@]}"
+                                    ;;
+                        	seed)
+                            	    seed_config \
+                                	"$service" \
+                                	"$ops_service_config_dir" \
+                                	"${data_ref[@]}"
+                            	    ;;
+                        	*)
+                            	    die "$service → unknown step: $step"
+                            	    ;;
+                    	    esac
+                	done
+                	;;
 
                     status)
                         local s
