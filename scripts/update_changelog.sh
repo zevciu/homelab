@@ -5,25 +5,27 @@ set -euo pipefail
 # METADATA
 # ==============================================================================
 # FUNCTION: update_changelog
-# PURPOSE: Automated updater for CHANGELOG.md based on git commits
+# PURPOSE: Automated updater for CHANGELOG.md based on git commits since last tag.
+#          Parses commits using format: type(scope)[section]: message
+#          Generates Markdown with proper grouping (Added, Changed, Fixed, etc.)
 #
 # DEPENDENCIES:
-#   - None (self-contained, uses standard git/bash tools)
+#   - git (must be available in PATH)
+#   - awk (GNU awk recommended for regex support)
 # ==============================================================================
 
 # -----------------------------------------------------------------------------
 # INPUT / OUTPUT CONTRACT
 # -----------------------------------------------------------------------------
 # INPUT:
-#   $@ - command-line arguments (--version, --date, --dry-run, --help)
+#   $@ - command-line arguments (--version, --date, --dry-run, --preview-full, --help)
 #   Environment: GIT_DIR (must be a valid git repository)
 #
 # OUTPUT:
-#   stdout: Progress messages, preview (if dry-run), or success confirmation
+#   stdout: Progress messages, preview (if dry-run/preview-full), or success confirmation
 #
 # SIDE EFFECTS:
-#   - Modifies CHANGELOG.md
-#   - Modifies METADATA.json (if exists)
+#   - Modifies CHANGELOG.md (unless --dry-run or --preview-full is used)
 #
 # RETURNS:
 #   0 on success
@@ -34,11 +36,11 @@ set -euo pipefail
 # CONFIGURATION
 # ==============================================================================
 
+# --- global constants ---
 REPO_DIR="$(git rev-parse --show-toplevel)"
-
-CHANGELOG_FILE="$REPO_DIR/CHANGELOG.md"
-VERSION_FILE="$REPO_DIR/METADATA.json"
+CHANGELOG_FILE="$REPO_DIR/docs/CHANGELOG.md"
 DEFAULT_VERSION="1.0.0"
+COMMIT_SEPARATOR="---COMMIT_BLOCK---"
 
 # ==============================================================================
 # IMPLEMENTATION
@@ -48,10 +50,23 @@ update_changelog() {
     # ---------------------------------------------------------------------------
     # INPUT
     # ---------------------------------------------------------------------------
+
     # --- parse command-line arguments ---
     local dry_run=false
+    local preview_full=false
     local version=""
     local date=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --version) version="$2"; shift 2 ;;
+            --date) date="$2"; shift 2 ;;
+            --dry-run) dry_run=true; shift ;;
+            --preview-full) preview_full=true; shift ;;
+            --help) update_changelog__show_usage; exit 0 ;;
+            *) echo "[ERROR] Unknown option: $1"; update_changelog__show_usage; exit 1 ;;
+        esac
+    done
 
     # ---------------------------------------------------------------------------
     # VALIDATION
@@ -65,162 +80,65 @@ update_changelog() {
     # ---------------------------------------------------------------------------
     # SETUP
     # ---------------------------------------------------------------------------
-    local current_version
-    local next_version
-    local release_date
+    local last_tag
+    local commits
+    local new_entry
+
+    # --- get last tag ---
+    last_tag=$(update_changelog__get_last_tag)
+
+    # --- get commits since last tag ---
+    commits=$(update_changelog__get_commits_since_tag "$last_tag")
+
+    if [ -z "$commits" ]; then
+        echo "[WARN] No commits found since last tag ($last_tag) or no tags exist."
+        exit 0
+    fi
+
+    # --- determine version and date ---
+    if [ -z "$version" ]; then
+        if [ -n "$last_tag" ]; then
+            local clean_tag="${last_tag#v}"
+            version=$(update_changelog__increment_version "$clean_tag")
+        else
+            version="$DEFAULT_VERSION"
+        fi
+    fi
+
+    if [ -z "$date" ]; then
+        date=$(date +%Y-%m-%d)
+    fi
+
+    echo "[INFO] Generating version: $version for date: $date"
+    [ -n "$last_tag" ] && echo "[INFO] Since last tag: $last_tag"
+
+    # --- generate new changelog entry ---
+    new_entry=$(update_changelog__generate_markdown "$version" "$date" "$commits")
 
     # ---------------------------------------------------------------------------
-    # HELPERS (INTERNAL)
+    # CORE
     # ---------------------------------------------------------------------------
 
-    update_changelog__show_usage() {
-        cat <<EOF
-Usage: $0 [OPTIONS]
+    # --- handle preview modes ---
+    if [ "$preview_full" = "true" ]; then
+        echo "[PREVIEW FULL] Full CHANGELOG.md content after update:"
+        echo "=========================================="
+        update_changelog__build_full_preview "$new_entry" "$CHANGELOG_FILE"
+        echo "=========================================="
+        exit 0
+    fi
 
-Options:
-  --version VERSION    Set version number (default: auto-increment)
-  --date DATE          Set release date (default: today)
-  --dry-run            Show what would change without modifying files
-  --help               Show this help message
+    if [ "$dry_run" = "true" ]; then
+        echo "[DRY RUN] Preview of new section only:"
+        echo "----------------------------------------"
+        echo "$new_entry"
+        echo "----------------------------------------"
+        exit 0
+    fi
 
-Examples:
-  $0                          # Auto-detect version and date
-  $0 --version 1.4.0          # Set specific version
-  $0 --date 2026-03-20        # Set specific date
-  $0 --dry-run                # Preview changes
-EOF
-    }
-
-    update_changelog__get_current_version() {
-        # --- extract latest version from CHANGELOG.md ---
-        if grep -q "^\[Unreleased\]" "$CHANGELOG_FILE" 2>/dev/null; then
-            # --- get version from previous section ---
-            grep -E "^## \[[0-9]+\.[0-9]+\.[0-9]+\]" "$CHANGELOG_FILE" | head -1 | \
-                sed 's/## \[\([0-9.]*\)\]/\1/'
-        else
-            echo "$DEFAULT_VERSION"
-        fi
-    }
-
-    update_changelog__increment_version() {
-        # --- increment patch version ---
-        local current="$1"
-        local major minor patch
-        IFS='.' read -r major minor patch <<< "$current"
-        echo "${major}.${minor}.$((patch + 1))"
-    }
-
-    update_changelog__parse_commits() {
-        # --- get commits since last tag or all commits ---
-        local since_tag="${1:-}"
-        local commits=""
-
-        if [ -n "$since_tag" ]; then
-            commits=$(git log --pretty=format:"%s" "${since_tag}..HEAD" 2>/dev/null || true)
-        else
-            commits=$(git log --pretty=format:"%s" HEAD 2>/dev/null || true)
-        fi
-
-        echo "$commits"
-    }
-
-    update_changelog__categorize_commits() {
-        # --- categorize commits by type (feat, fix, change, etc.) ---
-        local commits="$1"
-        local added="" changed="" fixed="" security="" removed=""
-
-        while IFS= read -r line || [[ -n "$line" ]]; do
-    		[ -z "$line" ] && continue
-
-    		# --- extract type (prefix before colon) ---
-    		local type=""
-    		local msg="$line"
-
-    		if [[ "$line" == *:* ]]; then
-        	    type="${line%%:*}"
-        	    msg="${line#*: }"
-    		fi
-
-    		# --- normalize type (capitalize first letter) ---
-    		local tag=""
-    		if [ -n "$type" ]; then
-        	    tag="[$(echo "$type" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')] "
-    		fi
-
-    		# --- strip existing tags like [Docs], [Feat] ---
-                local msg_clean="$msg"
-	        msg_clean="$(echo "$msg" | sed 's/^\[[^]]*\] //')"
-                msg_clean="${msg_clean,,}"
-
-    		# --- classify by meaning ---
-    		if [[ "$msg_clean" =~ (add|create|introduce|implement|init|initial) ]]; then
-        	    added="${added}- ${tag}${msg}"$'\n'
-
-    		elif [[ "$msg_clean" =~ (update|change|modify|refactor|improve) ]]; then
-        	    changed="${changed}- ${tag}${msg}"$'\n'
-
-    		elif [[ "$msg_clean" =~ (fix|resolve|bugfix|patch|correct) ]]; then
-        	    fixed="${fixed}- ${tag}${msg}"$'\n'
-
-    		elif [[ "$msg_clean" =~ (remove|delete|drop|cleanup) ]]; then
-        	    removed="${removed}- ${tag}${msg}"$'\n'
-
-    		elif [[ "$msg_clean" =~ (security) ]]; then
-        	    security="${security}- ${tag}${msg}"$'\n'
-
-    		else
-        	    # fallback
-        	    added="${added}- ${tag}${msg}"$'\n'
-    		fi
-
-	done <<< "$commits"
-
-        echo "ADDED:$added"
-        echo "CHANGED:$changed"
-        echo "FIXED:$fixed"
-        echo "SECURITY:$security"
-        echo "REMOVED:$removed"
-    }
-
-    update_changelog__update_changelog_file() {
-        # --- build and write new CHANGELOG.md content ---
-        local version="$1"
-        local date="$2"
-        local categorized="$3"
-        local dry_run="$4"
-
-        # --- extract sections from categorized commits ---
-        local added changed fixed security removed
-        added=$(echo "$categorized" | awk '
-    		/^ADDED:/ {flag=1; sub(/^ADDED:/,""); print; next}
-    		/^CHANGED:/ {flag=0}
-    		flag
-	')
-        changed=$(echo "$categorized" | awk '
-    		/^CHANGED:/ {flag=1; sub(/^CHANGED:/,""); print; next}
-    		/^FIXED:/ {flag=0}
-    		flag
-	')
-        fixed=$(echo "$categorized" | awk '
-    		/^FIXED:/ {flag=1; sub(/^FIXED:/,""); print; next}
-    		/^SECURITY:/ {flag=0}
-    		flag
-	')
-        security=$(echo "$categorized" | awk '
-    		/^SECURITY:/ {flag=1; sub(/^SECURITY:/,""); print; next}
-    		/^REMOVED:/ {flag=0}
-    		flag
-	')
-        removed=$(echo "$categorized" | awk '
-    		/^REMOVED:/ {flag=1; sub(/^REMOVED:/,""); print; next}
-    		flag
-	')
-
-        # --- create temporary file ---
-        local temp_file
-        temp_file=$(mktemp)
-
-        # --- build new release section ---
+    # --- update the actual file ---
+    if [ ! -f "$CHANGELOG_FILE" ]; then
+        # Create new file
         {
             echo "# Changelog"
             echo ""
@@ -229,173 +147,229 @@ EOF
             echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
             echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
             echo ""
-            echo "## [Unreleased]"
-            echo ""
+            echo "$new_entry"
+        } > "$CHANGELOG_FILE"
+        echo "[OK] Created $CHANGELOG_FILE"
+    else
+        # Insert new entry into existing file
+        local temp_file
+        temp_file=$(mktemp)
 
-            # --- copy unreleased content (if any) ---
-            if grep -q "^\[Unreleased\]" "$CHANGELOG_FILE"; then
-                awk '/^\[Unreleased\]/,/^## \[/ { if (!/^## \[/ || NR==FNR) print }' \
-                    "$CHANGELOG_FILE" "$CHANGELOG_FILE" | tail -n +2
-            fi
-
-            echo "---"
-            echo ""
-            echo "## [$version] - $date"
-            echo ""
-
-            # --- add sections if they have content ---
-            if [ -n "$added" ]; then
-                echo "### Added"
-                echo "$added"
-                echo ""
-            fi
-
-            if [ -n "$changed" ]; then
-                echo "### Changed"
-                echo "$changed"
-                echo ""
-            fi
-
-            if [ -n "$fixed" ]; then
-                echo "### Fixed"
-                echo "$fixed"
-                echo ""
-            fi
-
-            if [ -n "$security" ]; then
-                echo "### Security"
-                echo "$security"
-                echo ""
-            fi
-
-            if [ -n "$removed" ]; then
-                echo "### Removed"
-                echo "$removed"
-                echo ""
-            fi
-
-            # --- copy remaining old changelog ---
-            if grep -q "^## \[" "$CHANGELOG_FILE"; then
-                awk '/^## \[/ { if (found) exit; found=1 } found' "$CHANGELOG_FILE" | tail -n +2
-            fi
-
-            echo ""
-            echo "---"
-            echo ""
-            echo "## [Links]"
-            echo "- [Architecture Decision Records](docs/adr/)"
-            echo "- [Documentation](docs/)"
-
-        } > "$temp_file"
-
-        # --- write or preview changes ---
-        if [ "$dry_run" = "true" ]; then
-            echo "[DRY RUN] Would update CHANGELOG.md with:"
-            echo "  Version: $version"
-            echo "  Date: $date"
-            echo ""
-            echo "Preview:"
-            cat "$temp_file"
-            rm "$temp_file"
-        else
-            mv "$temp_file" "$CHANGELOG_FILE"
-            echo "[OK] Updated $CHANGELOG_FILE"
-            echo "  Version: $version"
-            echo "  Date: $date"
-        fi
-    }
-
-    update_changelog__update_metadata() {
-        # --- update METADATA.json with new version and date ---
-        local version="$1"
-        local date="$2"
-        local dry_run="$3"
-
-        if [ ! -f "$VERSION_FILE" ]; then
-            echo "[WARN] $VERSION_FILE not found, skipping metadata update"
-            return
-        fi
-
-        if [ "$dry_run" = "true" ]; then
-            echo "[DRY RUN] Would update $VERSION_FILE with version: $version"
-        else
-            # --- simple JSON update (assumes basic structure) ---
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version\"/" "$VERSION_FILE"
-            sed -i "s/\"last_updated\": \"[^\"]*\"/\"last_updated\": \"$date\"/" "$VERSION_FILE"
-            echo "[OK] Updated $VERSION_FILE"
-        fi
-    }
-
-    # ---------------------------------------------------------------------------
-    # CORE
-    # ---------------------------------------------------------------------------
-
-    # --- parse arguments ---
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --version)
-                version="$2"
-                shift 2
-                ;;
-            --date)
-                date="$2"
-                shift 2
-                ;;
-            --dry-run)
-                dry_run=true
-                shift
-                ;;
-            --help)
-                update_changelog__show_usage
-                exit 0
-                ;;
-            *)
-                echo "[ERROR] Unknown option: $1"
-                update_changelog__show_usage
-                exit 1
-                ;;
-        esac
-    done
-
-    # --- set defaults ---
-    [ -z "$version" ] && version=$(update_changelog__increment_version "$(update_changelog__get_current_version)")
-    [ -z "$date" ] && date=$(date +%Y-%m-%d)
-
-    # --- get and categorize commits ---
-    local commits
-    commits=$(update_changelog__parse_commits)
-    if [ -z "$commits" ]; then
-        echo "[WARN] No commits found to process"
-        exit 0
-    fi
-
-    local categorized
-    categorized=$(update_changelog__categorize_commits "$commits")
-
-    # --- update files ---
-    update_changelog__update_changelog_file "$version" "$date" "$categorized" "$dry_run"
-    update_changelog__update_metadata "$version" "$date" "$dry_run"
-
-    # --- final instructions ---
-    if [ "$dry_run" != "true" ]; then
-        echo ""
-        echo "Next steps:"
-        echo "  1. Review: git diff $CHANGELOG_FILE"
-        echo "  2. Commit: git add $CHANGELOG_FILE && git commit -m \"chore: update CHANGELOG for v$version\""
-        echo "  3. Tag: git tag v$version"
+        update_changelog__insert_entry "$new_entry" "$CHANGELOG_FILE" > "$temp_file"
+        mv "$temp_file" "$CHANGELOG_FILE"
+        echo "[OK] Updated $CHANGELOG_FILE (version $version)"
     fi
 
     # ---------------------------------------------------------------------------
     # OUTPUT / RETURN / FINALIZE
     # ---------------------------------------------------------------------------
+    echo ""
+    echo "Next steps:"
+    echo "  1. Review: git diff $CHANGELOG_FILE"
+    echo "  2. Commit: git add $CHANGELOG_FILE && git commit -m \"chore: update CHANGELOG for v$version\""
+    echo "  3. Tag: git tag v$version"
+
     return 0
+}
+
+# -----------------------------------------------------------------------------
+# HELPERS (INTERNAL)
+# -----------------------------------------------------------------------------
+
+update_changelog__show_usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  --version VERSION    Set version number (default: auto-increment from last tag)
+  --date DATE          Set release date (default: today YYYY-MM-DD)
+  --dry-run            Show preview of new section only (without history)
+  --preview-full       Show preview of entire file (new section + history)
+  --help               Show this help message
+
+Examples:
+  $0                          # Update file with auto-detected version/date
+  $0 --version 2.0.0          # Set specific version
+  $0 --date 2026-04-29        # Set specific date
+  $0 --dry-run                # Preview new section
+  $0 --preview-full           # Preview full file
+EOF
+}
+
+update_changelog__get_last_tag() {
+    git describe --tags --abbrev=0 2>/dev/null || echo ""
+}
+
+update_changelog__get_commits_since_tag() {
+    local last_tag="$1"
+    if [ -n "$last_tag" ]; then
+        git log --pretty=format:"%H${COMMIT_SEPARATOR}%B${COMMIT_SEPARATOR}" "${last_tag}..HEAD" 2>/dev/null || true
+    else
+        git log --pretty=format:"%H${COMMIT_SEPARATOR}%B${COMMIT_SEPARATOR}" HEAD 2>/dev/null || true
+    fi
+}
+
+update_changelog__increment_version() {
+    local current="$1"
+    local major minor patch
+    IFS='.' read -r major minor patch <<< "$current"
+    echo "${major}.${minor}.$((patch + 1))"
+}
+
+# --- generates Markdown for the new version using AWK ---
+update_changelog__generate_markdown() {
+    local version="$1"
+    local date="$2"
+    local commits_raw="$3"
+
+    echo "$commits_raw" | awk -v version="$version" -v date="$date" '
+    BEGIN {
+        RS = "'"$COMMIT_SEPARATOR"'"
+        FS = "\n"
+        
+        sections["Added"] = ""
+        sections["Changed"] = ""
+        sections["Fixed"] = ""
+        sections["Security"] = ""
+        sections["Removed"] = ""
+        
+        order[1] = "Added"
+        order[2] = "Changed"
+        order[3] = "Fixed"
+        order[4] = "Security"
+        order[5] = "Removed"
+    }
+
+    function title_case(str) {
+        return toupper(substr(str, 1, 1)) tolower(substr(str, 2))
+    }
+
+    function get_section(sec) {
+        if (sec ~ /^[Aa]dd/) return "Added"
+        if (sec ~ /^[Cc]hange/) return "Changed"
+        if (sec ~ /^[Ff]ix/) return "Fixed"
+        if (sec ~ /^[Ss]ec/) return "Security"
+        if (sec ~ /^[Rr]em/) return "Removed"
+        return "Changed"
+    }
+
+    {
+        if (NF == 0) next
+        
+        subject = $1
+        
+        body = ""
+        for (i = 2; i <= NF; i++) {
+            if ($i != "") {
+                body = body $i "\n"
+            }
+        }
+        
+        # --- regex: type(scope)[section]: message ---
+        if (match(subject, /^([a-zA-Z]+)(\([^)]+\))?(\[[a-zA-Z]+\])?: (.*)$/, arr)) {
+            type = arr[1]
+            section_raw = arr[3]
+            message = arr[4]
+            
+            gsub(/\[|\]/, "", section_raw)
+            
+            type_label = title_case(type)
+            section_name = get_section(section_raw)
+            
+            main_line = "- [" type_label "] " message
+            
+            body_lines = ""
+            n = split(body, body_arr, "\n")
+            for (i = 1; i <= n; i++) {
+                line = body_arr[i]
+                if (line == "") continue
+                
+                if (match(line, /^[[:space:]]*- /)) {
+                    body_lines = body_lines "  " line "\n"
+                }
+            }
+            
+            sections[section_name] = sections[section_name] main_line "\n"
+            if (body_lines != "") {
+                sections[section_name] = sections[section_name] body_lines "\n"
+            }
+        }
+    }
+
+    END {
+        print "## [" version "] - " date
+        print ""
+        
+        for (i = 1; i <= 5; i++) {
+            sec = order[i]
+            if (sections[sec] != "") {
+                print "### " sec
+                gsub(/\n+$/, "", sections[sec])
+                print sections[sec]
+                print ""
+            }
+        }
+    }
+    '
+}
+
+# --- builds the full preview (new entry + existing history) ---
+update_changelog__build_full_preview() {
+    local new_entry="$1"
+    local existing_file="$2"
+    
+    if [ ! -f "$existing_file" ]; then
+        {
+            echo "# Changelog"
+            echo ""
+            echo "All notable changes to this project will be documented in this file."
+            echo ""
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+            echo ""
+            echo "$new_entry"
+        }
+        return
+    fi
+    
+    update_changelog__insert_entry "$new_entry" "$existing_file"
+}
+
+# --- inserts the new entry into the file content (used by both preview and update) ---
+update_changelog__insert_entry() {
+    local new_entry="$1"
+    local source_file="$2"
+    
+    local header_done=false
+    local inserted=false
+    
+    {
+        while IFS= read -r line || [ -n "$line" ]; do
+            echo "$line"
+            
+            if [ "$line" = "# Changelog" ]; then
+                header_done=true
+                continue
+            fi
+            
+            if [ "$header_done" = "true" ] && [ "$inserted" = "false" ]; then
+                if [[ "$line" =~ ^##\ \[ ]]; then
+                    echo "$new_entry"
+                    inserted=true
+                fi
+            fi
+        done < "$source_file"
+        
+        if [ "$header_done" = "true" ] && [ "$inserted" = "false" ]; then
+            echo "$new_entry"
+        fi
+        
+    }
 }
 
 # ==============================================================================
 # ENTRYPOINT
 # ==============================================================================
-
-# --- execute main function if script is run directly (not sourced) ---
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     update_changelog "$@"
