@@ -1,0 +1,48 @@
+services:
+
+  unbound:
+    image: mvance/unbound-rpi:latest
+    container_name: dns-unbound
+    networks:
+      - dns-net
+    volumes:
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf
+      - ./unbound/a-records.conf:/opt/unbound/etc/unbound/a-records.conf
+      - ./unbound/srv-records.conf:/opt/unbound/etc/unbound/srv-records.conf
+      - ./unbound/forward-records.conf:/opt/unbound/etc/unbound/forward-records.conf
+      - ./unbound/root.hints:/opt/unbound/etc/unbound/root.hints
+    healthcheck:
+      test: ["CMD", "drill", "google.com", "@127.0.0.1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: dns-pihole
+    hostname: pihole
+    depends_on:
+      - unbound
+    networks:
+      - dns-net
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80"
+    environment:
+      TZ: "${TZ}"
+      FTLCONF_webserver_api_password: "${PIHOLE_WEB_PASSWORD}"
+      FTLCONF_dns_upstreams: "unbound#53"
+      FTLCONF_dns_listeningMode: "all"
+    volumes:
+      - ./pihole/etc-pihole:/etc/pihole
+      - ./pihole/etc-dnsmasq.d/02-local-dns.conf:/etc/dnsmasq.d/02-local-dns.conf
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+
+networks:
+  dns-net:
+    external: true

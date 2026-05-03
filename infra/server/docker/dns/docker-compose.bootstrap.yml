@@ -1,0 +1,38 @@
+services:
+
+  unbound:
+    image: mvance/unbound-rpi:latest
+    container_name: dns-unbound
+    networks:
+      - dns-net
+    healthcheck:
+      test: ["CMD", "drill", "google.com", "@127.0.0.1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: dns-pihole
+    hostname: pihole
+    depends_on:
+      - unbound
+    networks:
+      - dns-net
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: "${TZ}"
+      FTLCONF_webserver_api_password: "${PIHOLE_WEB_PASSWORD}"
+      FTLCONF_dns_upstreams: "unbound#53"
+      FTLCONF_dns_listeningMode: "all"
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+
+networks:
+  dns-net:
+    external: true
