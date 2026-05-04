@@ -268,6 +268,7 @@ update_changelog__generate_markdown() {
         # --- regex: type(scope)[section]: message ---
         if (match(subject, /^([a-zA-Z]+)(\([^)]+\))?(\[[a-zA-Z]+\])?: (.*)$/, arr)) {
             type = arr[1]
+	    scope = arr[2]
             section_raw = arr[3]
             message = arr[4]
             
@@ -276,7 +277,14 @@ update_changelog__generate_markdown() {
             type_label = title_case(type)
             section_name = get_section(section_raw)
             
-            main_line = "- [" type_label "] " message
+            # --- build main line scope if present
+            if (scope != "") {
+                # --- remove parentheses ---
+                gsub(/\(|\)/, "", scope)
+                main_line = "- [" type_label "] (" scope ") " message
+            } else {
+                main_line = "- [" type_label "] " message
+            }
             
             body_lines = ""
             n = split(body, body_arr, "\n")
