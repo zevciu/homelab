@@ -13,6 +13,16 @@ This repository serves as both:
 
 ---
 
+# Environment
+
+## Application Server
+- Raspberry Pi 3B running Ubuntu Server
+- Docker host for self-hosted services
+- Tailscale node for secure remote network access
+
+
+---
+
 # Philosophy
 
 The project follows several core principles:
@@ -57,3 +67,12 @@ Introduced a custom infrastructure automation toolkit featuring:
 Introduced a dedicated DNS architecture based on:
 - Pi-hole as the DNS filtering and local DNS management layer,
 - and Unbound as a fully recursive resolver performing direct root-to-authoritative DNS resolution without external upstream providers.
+
+# Future Plans
+
+## Application Server
+- introduce NGINX as a reverse proxy and centralized ingress layer
+
+## Network Infrastructure
+- integrate a managed network switch into the homelab environment for network segmentation and internal traffic management
+- build a dedicated pfSense-based router/firewall appliance to gain full control over routing and firewall
