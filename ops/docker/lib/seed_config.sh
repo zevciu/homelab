@@ -8,6 +8,7 @@
 #   - logger.sh (log, log_warn, log_ok)
 #   - run.sh (run)
 #   - set_status.sh (set_status)
+#   - create_files.sh (create_files)
 # ==============================================================================
 
 # -----------------------------------------------------------------------------
@@ -70,8 +71,14 @@ seed_config() {
     fi
 
     # ---------------------------------------------------------------------------
-    # SETUP (none)
+    # SETUP
     # ---------------------------------------------------------------------------
+
+    # --- convert relative paths from input to absolute paths (required by create_files) ---
+    local full_paths=()
+    for file in "${seed_files[@]}"; do
+        full_paths+=("$ops_service_config_dir/$file")
+    done
 
     # ---------------------------------------------------------------------------
     # CORE
@@ -81,13 +88,7 @@ seed_config() {
     log "$service → seeding config"
 
     # --- create seed files ---
-    for file in "${seed_files[@]}"; do
-        local path="$ops_service_config_dir/$file"
-        run mkdir -p "$(dirname "$path")"
-        run touch "$path"
-
-        log_ok "created: $file"
-    done
+    run create_files "${full_paths[@]}"
 
     # --- set initial status ---
     run set_status "$service" "$ops_service_config_dir" "INIT"
