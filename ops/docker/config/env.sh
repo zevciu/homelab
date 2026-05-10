@@ -11,6 +11,7 @@ set -euo pipefail
 # DEPENDENCIES:
 #   - scripts/helpers/logger.sh
 #   - scripts/helpers/global_flags.sh
+#   - scripts/helpers/create_files.sh
 #   - ops/docker/lib/*.sh
 # ==============================================================================
 
@@ -60,6 +61,7 @@ source "$HELPERS_DIR/require_args.sh"
 source "$HELPERS_DIR/run.sh"
 source "$HELPERS_DIR/confirm_action.sh"
 source "$HELPERS_DIR/global_flags.sh"
+source "$HELPERS_DIR/create_files.sh"
 
 source "$GLOBAL_OPS_DOCKER_LIB_DIR/set_status.sh"
 source "$GLOBAL_OPS_DOCKER_LIB_DIR/get_status.sh"
