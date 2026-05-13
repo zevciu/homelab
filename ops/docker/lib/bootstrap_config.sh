@@ -62,10 +62,15 @@ bootstrap_config() {
     # VALIDATION
     # ---------------------------------------------------------------------------
 
-    # --- check if config already exists ---
-    if [ -d "$ops_service_config_dir" ] && [ "$(ls -A "$ops_service_config_dir" 2>/dev/null)" ]; then
-        log_warn "$service → bootstrap skipped (config exists)"
-        return 0
+    # --- check if config files already exist ---
+    if [ -d "$ops_service_config_dir" ]; then
+        local file_count
+        file_count="$(find "$ops_service_config_dir" -maxdepth 1 -type f ! -name '.*' 2>/dev/null | wc -l)"
+
+        if [ "$file_count" -gt 0 ]; then
+            log_warn "$service → bootstrap skipped (config files exist)"
+            return 0
+        fi
     fi
 
     # ---------------------------------------------------------------------------

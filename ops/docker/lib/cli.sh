@@ -226,6 +226,13 @@ EOF
 
                     	    # --- dispatch ---
                     	    case "$step" in
+				setup)
+				    setup_config \
+					"$service" \
+					"$ops_service_config_dir" \
+					"$runtime_service_config_dir" \
+					"${data_ref[@]}"
+				    ;;
                         	bootstrap)
                             	    bootstrap_config \
                                         "$service" \
