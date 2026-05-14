@@ -23,11 +23,10 @@ SERVICES=("unbound" "pihole")
 BOOTSTRAP_COMPOSE="$PROJECT_DIR/docker-compose.bootstrap.yml"
 DOCKER_COMPOSE="$PROJECT_DIR/docker-compose.yml"
 
-
 # --- unbound ---
 TARGET_DIR_unbound="$PROJECT_DIR/unbound"
 
-FILES_MAP_unbound=(
+BOOTSTRAP_MAP_unbound=(
   "unbound.conf:/opt/unbound/etc/unbound/unbound.conf"
   "a-records.conf:/opt/unbound/etc/unbound/a-records.conf"
   "srv-records.conf:/opt/unbound/etc/unbound/srv-records.conf"
@@ -39,20 +38,12 @@ SEED_FILES_unbound=(
 )
 
 INIT_FLOW_unbound=(
-  "bootstrap:FILES_MAP"
+  "bootstrap:BOOTSTRAP_MAP"
   "seed:SEED_FILES"
 )
 
 # --- pihole ---
-TARGET_DIR_pihole="$PROJECT_DIR/pihole"
-
-SEED_FILES_pihole=(
-  "etc-dnsmasq.d/02-local-dns.conf"
-)
-
-INIT_FLOW_pihole=(
-  "seed:SEED_FILES"
-)
+# No additional config prior to container deployment is required. All is handled by the Compose file.
 
 # -----------------------------------------------------------------------------
 # CORE

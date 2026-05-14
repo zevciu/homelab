@@ -20,16 +20,6 @@ services:
       - unbound
     networks:
       - dns-net
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-    environment:
-      TZ: "${TZ}"
-      FTLCONF_webserver_api_password: "${PIHOLE_WEB_PASSWORD}"
-      FTLCONF_dns_upstreams: "unbound#53"
-      FTLCONF_dns_listeningMode: "all"
-    cap_add:
-      - NET_ADMIN
     restart: unless-stopped
 
 
