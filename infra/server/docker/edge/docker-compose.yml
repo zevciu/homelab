@@ -1,0 +1,31 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/certs:/etc/nginx/certs
+    networks:
+      - edge-net
+      - app-net
+      - dns-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "-T", "5", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+
+networks:
+  edge-net:
+    external: true
+  app-net:
+    external: true
+  dns-net:
+    external: true

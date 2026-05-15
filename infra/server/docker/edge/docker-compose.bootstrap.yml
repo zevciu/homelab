@@ -1,0 +1,18 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    networks:
+      - edge-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "-T", "5", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+
+networks:
+  edge-net:
+    external: true
+

@@ -1,0 +1,12 @@
+services:
+  omni-tools:
+    image: iib0011/omni-tools:latest
+    container_name: omni-tools
+    networks:
+      - app-net
+    restart: unless-stopped
+
+
+networks:
+  app-net:
+    external: true

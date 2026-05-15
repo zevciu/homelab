@@ -34,7 +34,9 @@ services:
       FTLCONF_webserver_api_password: "${PIHOLE_WEB_PASSWORD}"
       FTLCONF_dns_upstreams: "unbound#53"
       FTLCONF_dns_listeningMode: "all"
-      FTLCONF_dns_hosts: "${HOST_IP} dns.infra.lab"
+      FTLCONF_dns_hosts: |
+        ${HOST_IP} dns.infra.lab
+        ${HOST_IP} omni-tools.home.lab
       FTLCONF_webserver_domain: "dns.infra.lab"
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
