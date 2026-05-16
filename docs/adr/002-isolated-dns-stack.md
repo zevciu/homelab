@@ -4,7 +4,7 @@
 Valid
 
 ## Date
-2026-05-04
+2026-05-04 (Update: 2026-05-15)
 
 ## Context
 
@@ -12,24 +12,21 @@ DNS in the homelab was either:
 - handled by external resolvers (ISP / public DNS), or
 - managed in an ad-hoc, inconsistent way.
 
-This caused several issues:
+### Problems identified
 
-- **No privacy**
-  DNS queries were sent to third-party resolvers.
+#### 1. Weak level of privacy
+  DNS queries were sent to third-party resolvers. There would be no ownership of resolution and a full dependency on upstream DNS providers.
 
-- **No filtering layer**  
+#### 2. No filtering layer
   No central ad-blocking or domain control.
 
-- **No ownership of resolution**  
-  Full dependency on upstream DNS providers.
-
-- **Weak service discovery**  
+#### 3. Weak service discovery
   Internal services had no reliable DNS mapping.
 
 ### Constraints
 
 - Must remain fully containerized (Docker-native).
-- Must integrate with existing Ops/Runtime architecture (ADR-001).
+- Must integrate with existing Ops/Runtime architecture (ADR-001) & NGINX as a reverse proxy (ADR-003).
 - Must avoid reliance on external DNS resolvers for recursive resolution.
 - Must remain lightweight and maintainable on single-node homelab infrastructure.
 - Must support future extension (local zones, SRV records, service discovery).
@@ -98,57 +95,6 @@ This allows:
 
 ---
 
-## Privacy vs Anonymity
-
-This architecture improves **privacy**, but does NOT provide **network anonymity**.
-
-### What IS achieved (Privacy improvements)
-- No third-party DNS resolvers
-- No ISP DNS logging (for DNS queries)
-- Local filtering before resolution (Pi-hole)
-- Full control over DNS resolution chain
-- Reduced external telemetry exposure
-
-### What is NOT achieved (Anonymity limitations)
-
-Although ultimately desired, anonymity is NOT achieved due to:
-
-#### 1. ISP visibility
-- ISP can still see:
-  - IP connections to root DNS servers
-  - Encrypted DNS traffic patterns (if DoT/DoH used elsewhere)
-
-#### 2. IP-level traceability
-- This stack does not hide:
-  - Public IP address
-  - Device identity at network level
-
-#### 3. Authoritative DNS exposure
-- Final queried domains are still visible to:
-  - Authoritative DNS servers
-  - Registry operators
-
-#### 4. Traffic correlation
-- DNS resolution can be correlated with:
-  - HTTP(S) traffic patterns
-  - Timing analysis
-  - Network metadata
-
----
-
-### Conclusion
-This system provides:
-> **Better privacy, but not anonymity**
-
-To achieve anonymity, additional layers would be required, such as:
-- Tor / Onion routing
-- VPN tunneling with trusted exit nodes
-- Traffic obfuscation layers
-
-To be considered in the future as possible architecture directions. 
-
----
-
 ## Consequences
 
 ### Positive
@@ -185,17 +131,26 @@ To be considered in the future as possible architecture directions.
 
 - **Single-node failure**
   - Entire DNS stack depends on one host
-  - Mitigation: acceptable within homelab constraints
+  - Mitigation: acceptable within homelab
 
 ---
 
 ## Summary
 
-This architecture establishes a **fully self-contained, privacy-preserving DNS subsystem** that:
+This architecture establishes a **fully self-contained, privacy-preserving DNS subsystem**
 
-- removes external DNS dependency
-- enforces recursive resolution ownership
-- centralizes filtering logic
-- integrates cleanly with existing Ops/Runtime automation model (ADR-001).
+### What is achieved
+- No third-party DNS resolvers
+- No ISP DNS logging (for DNS queries)
+- Local filtering before resolution (Pi-hole)
+- Full control over DNS resolution chain
+- Reduced external telemetry exposure
+
+### Possible future directions 
+
+In the context of hardening privacy towards anonymity, additional layers would be required, such as:
+- Tor / Onion routing
+- VPN tunneling with trusted exit nodes
+- Traffic obfuscation layers
 
 ---

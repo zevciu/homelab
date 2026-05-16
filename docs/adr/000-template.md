@@ -1,16 +1,31 @@
 # ADR-XXX: [Title of Decision]
 
 ## Status
-[Proposed | Valid | Deprecated | Superseded]
+[Valid | Deprecated | Superseded]
 
 ## Date
 YYYY-MM-DD
 
 ## Context
-What problem am I solving? What are the constraints? Why is this important?
+What was the initial state? 
+
+### Problems Identified
+What problems am I solving?
+
+### Constrains
+What are the constraints?
 
 ## Decision
-What did I decide? What were the alternatives?
+What did I decide?
+
+### Architecture decision 1
+- Description...
+
+### Architecture decision 2
+- Description...
+
+### Alternatives
+What were the alternatives?
 
 ## Consequences
 
@@ -25,3 +40,5 @@ What did I decide? What were the alternatives?
 ### Risks
 - Risk 1
 - Mitigation: [How to reduce risk]
+
+## Summary
