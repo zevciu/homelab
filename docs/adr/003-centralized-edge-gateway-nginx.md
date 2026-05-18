@@ -58,6 +58,8 @@ NGINX acts as:
 - a reverse proxy for internal services,
 - a controlled inter-network bridge between isolated Docker segments.
 
+A network segmentation model was introduced in place of flat topology.
+
 ---
 
 ### 1. Network segmentation model
@@ -168,3 +170,6 @@ This decision introduces a centralized NGINX-based edge gateway architecture usi
 - controlled cross-network routing through NGINX,
 - Docker-native hostname-based service discovery,
 - architectural foundation for future HTTPS and authentication layers.
+
+---
+*This document is part of the Architecture Decision Records (ADR) series for my Homelab project.*

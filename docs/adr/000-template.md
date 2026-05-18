@@ -12,17 +12,29 @@ What was the initial state?
 ### Problems Identified
 What problems am I solving?
 
-### Constrains
+#### 1. Problem
+- Description
+
+#### 2. Problem
+- Description
+
+### Constraints
 What are the constraints?
+
+#### 1. Constraint
+- Description
+
+#### 2. Constraint
+- Description
 
 ## Decision
 What did I decide?
 
-### Architecture decision 1
-- Description...
+### 1. Decision
+- Description
 
-### Architecture decision 2
-- Description...
+### 2. Decision
+- Description
 
 ### Alternatives
 What were the alternatives?
@@ -38,7 +50,9 @@ What were the alternatives?
 - Drawback 2
 
 ### Risks
-- Risk 1
+
+#### 1. Risk
+- Description
 - Mitigation: [How to reduce risk]
 
 ## Summary

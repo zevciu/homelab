@@ -12,7 +12,7 @@ DNS in the homelab was either:
 - handled by external resolvers (ISP / public DNS), or
 - managed in an ad-hoc, inconsistent way.
 
-### Problems identified
+### Problems Identified
 
 #### 1. Weak level of privacy
   DNS queries were sent to third-party resolvers. There would be no ownership of resolution and a full dependency on upstream DNS providers.
@@ -75,19 +75,7 @@ Instead:
 
 ---
 
-### 4. Local DNS overrides
-Custom local records are managed via:
-- `a-records.conf`
-- `srv-records.conf`
-
-This allows:
-- Local service discovery
-- Internal domains (LAN-only resolution)
-- Static IP mapping for services
-
----
-
-### 5. Docker network isolation
+### 4. Docker network isolation
 - Both services run in a dedicated Docker network:
   - `dns-net`
 - Only Pi-hole exposes port 53 to host
@@ -117,9 +105,7 @@ This allows:
 - **Slight latency overhead**
   - Recursive resolution is slower than cached forwarders.
 
----
-
-## Risks
+### Risks
 
 - **Misconfiguration of Unbound recursion**
   - Could break external DNS resolution entirely
@@ -154,3 +140,4 @@ In the context of hardening privacy towards anonymity, additional layers would b
 - Traffic obfuscation layers
 
 ---
+*This document is part of the Architecture Decision Records (ADR) series for my Homelab project.*
