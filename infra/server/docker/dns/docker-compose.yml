@@ -35,9 +35,11 @@ services:
       FTLCONF_dns_upstreams: "unbound#53"
       FTLCONF_dns_listeningMode: "all"
       FTLCONF_dns_hosts: |
-        ${HOST_IP} dns.infra.lab
-        ${HOST_IP} omni-tools.home.lab
-      FTLCONF_webserver_domain: "dns.infra.lab"
+        ${LAN_IP} dns.home.lab
+        ${LAN_IP} omni-tools.home.lab
+
+        ${VPN_IP} dns.remote.lab
+        ${VPN_IP} omni-tools.remote.lab
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
     cap_add:
