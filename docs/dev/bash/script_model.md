@@ -78,7 +78,7 @@ Engine
 
 Role provides additional context about the responsibility of a script.
 
-A role does not define a template.
+Unlike Structure, a Role does not define a template.
 
 Instead, it explains:
 
@@ -143,7 +143,7 @@ Typical characteristics:
 
 ### Possible Roles
 
-Not decided yet. Roles for tasks are optional. 
+Not decided yet. Roles for tasks are optional.
 
 Examples:
 
@@ -356,20 +356,20 @@ Execution and orchestration layer.
 
 Responsibilities:
 
+- assemble execution dependencies,
 - provide execution entrypoints,
 - coordinate execution flow,
-- invoke reusable library functions,
-- connect configuration with implementation.
+- dispatch reusable logic.
 
 Rules:
 
 - minimal business logic,
-- no domain declarations,
+- no declarative configuration,
 - orchestration only.
 
 ---
 
-### 2.3.1 Role: Orchestrator
+### 2.3.1 Role: CLI
 
 Coordinates execution based on user input.
 
@@ -386,7 +386,7 @@ Responsibilities:
 - route commands,
 - connect blueprints with libraries.
 
-The Orchestrator role acts as the primary execution inteface of the system.
+The CLI role acts as the primary execution inteface of the system.
 
 ---
 
@@ -404,10 +404,10 @@ Responsibilities:
 
 - execute predefined cases,
 - automate repetitive execution,
-- drive libraries using fixed input,'
+- drive libraries using fixed input,
 - suport testing, validation, and automation workflows.
 
-A Runner does not typically expose a rich user-facing interface (as opposed to Orchestrator). Its primary purpose is execution of predefined flows.
+A Runner does not typically expose a rich user-facing interface (as opposed to CLI). Its primary purpose is execution of predefined flows.
 
 
 
@@ -430,7 +430,7 @@ Component
 │   └── Domain Logic
 │
 └── Engine
-    └── Orchestrator
+    └── CLI
     └── Runner
 ```
 
