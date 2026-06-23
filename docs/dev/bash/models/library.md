@@ -49,7 +49,7 @@ METADATA
 
 HELPERS (optional)
 
-MAIN
+FUNCTION
  ├── INPUT
  ├── SETUP
  ├── VALIDATION
@@ -106,6 +106,8 @@ Library files use the following metadata structure:
 
 ##### I. Classification
 
+Identifies the script according to the Script Model.
+
 ##### II. Dependencies
 
 Dependencies must document all external functons required by the library. Only direct dependencies should be listed. Maintaining the accurate listing is to make runtime requirements visible without reading the implementation.
@@ -135,7 +137,7 @@ Helpers should:
 
 ---
 
-#### MAIN
+#### FUNCTION
 
 Contains the public function.
 
