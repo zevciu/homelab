@@ -234,8 +234,6 @@ VALIDATION
   ↓
 CORE
   ↓
-FALLBACK (optional)
-  ↓
 OUTPUT / RETURN
 ```
 
@@ -245,7 +243,6 @@ Conceptually:
 - SETUP derives everything required for execution.
 - VALIDATION verifies all runtime assumptions.
 - CORE performs the actual operation.
-- FALLBACK handles exceptional non-fatal cases.
 - OUTPUT / RETURN exposes the result.
 
 A key design goal is:

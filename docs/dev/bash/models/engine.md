@@ -56,7 +56,8 @@ ORCHESTRATOR
  ├── INPUT
  ├── SETUP
  ├── VALIDATION
- └── FLOW
+ ├── FLOW
+ └── FALLBACK (optional)
 
 ENTRYPOINT
 ```
@@ -238,6 +239,16 @@ Responsibilities:
 
 Business logic should remain inside Library components.
 
+##### V. FALLBACK (optional)
+
+Optional alternative behavior when the primary execution path produces no usable result.
+
+Examples:
+
+- default values,
+- secondary lookup strategy,
+- graceful degradation.
+
 ---
 
 #### ENTRYPOINT
@@ -265,22 +276,23 @@ The intended execution flow is:
 ```text
 DEPENDENCIES
   ↓
-INPUT
+ORCHESTRATOR
+    ├── INPUT
+    ├── SETUP
+    ├── VALIDATION
+    └── FLOW
   ↓
-SETUP
-  ↓
-VALIDATION
-  ↓
-FLOW
+ENTRYPOINT
 ```
 
 Conceptually:
 
-- DEPENDENCIES load declarative configuration components and reusable logic components.
-- INPUT receives execution requests.
-- SETUP prepares execution context.
+- DEPENDENCIES assemble external resources.
+- INPUT handles all incoming data and basic sanity checks.
+- SETUP derives everything required for execution.
 - VALIDATION verifies all runtime assumptions.
 - FLOW coordinates and executes the orchestration process.
+- ENTRYPOINT starts execution.
 
 A key design goal is:
 
