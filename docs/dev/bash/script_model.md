@@ -76,7 +76,7 @@ Engine
 
 ## 0.3 Role
 
-Role provides additional context about the responsibility of a script.
+Role provides additional context about how a script is intended to be used.
 
 Unlike Structure, a Role does not define a template.
 
@@ -111,8 +111,6 @@ Characteristics:
 - does not require an external engine,
 - does not participate in a layered architecture.
 
----
-
 ## 1.1 Structure: Task
 
 A task is a self-contained script designed to achieve a specific goal.
@@ -121,8 +119,9 @@ Responsibilities:
 
 - perform a complete workflow,
 - own configuration,
+- own dependencies,
 - own logic,
-- own execution flow.
+- own execution.
 
 Examples:
 
@@ -138,8 +137,6 @@ Typical characteristics:
 - may be interactive,
 - may run continuously,
 - may expose CLI arguments.
-
----
 
 ### Possible Roles
 
@@ -158,17 +155,16 @@ Task
 
 I may establish them on-the-go.
 
----
-
 ## 1.2 Structure: Procedure
 
-A procedure is an executable representation of a manual operational process.
+A procedure is a manual operation encoded as an executable script.
 
 Responsibilities:
 
 - encode operational steps,
 - improve repeatability,
 - reduce operator mistakes,
+- automate manual execution,
 - serve as executable documentation.
 
 Examples:
@@ -185,8 +181,6 @@ Typical characteristics:
 - infrastructure-focused,
 - operational in nature,
 - mirrors a manual runbook.
-
----
 
 ### Possible Roles
 
@@ -220,27 +214,22 @@ Characteristics:
 - participates in a layered architecture,
 - typically sourced or invoked by another component.
 
----
-
 ## 2.1 Structure: Config
 
 Declarative configuration layer.
 
 Responsibilities:
 
-- define paths,
-- define variables,
-- define mappings,
-- define settings,
-- define declarations consumed by other layers.
+- define configuration data,
+- define declarations,
+- define derivations,
+- expose configuration consued by other layers.
 
 Rules:
 
 - no business logic,
 - no orchestration,
 - no side effects.
-
----
 
 ### 2.1.1. Role: Environment
 
@@ -261,8 +250,6 @@ Responsibilities:
 - environment-wide configuration.
 
 The Environment role contains shared configuration that is independent of any specific project.
-
----
 
 ### 2.1.2 Role: Blueprint
 
@@ -304,8 +291,6 @@ Rules:
 - no CLI handling,
 - no direct execution.
 
----
-
 ### 2.2.1 Role: Helper
 
 Generic reusable utility functions.
@@ -325,8 +310,6 @@ Responsibilities:
 - support multiple projects.
 
 Helpers should be broadly reusable.
-
----
 
 ### 2.2.2 Role: Domain Logic
 
@@ -348,17 +331,15 @@ Responsibilities:
 
 Domain Logic components contain business logic but no orchestration.
 
----
-
 ## 2.3 Structure: Engine
 
 Execution and orchestration layer.
 
 Responsibilities:
 
-- assemble execution dependencies,
+- assemble execution context and reusable logic,
 - provide execution entrypoints,
-- coordinate execution flow,
+- coordinate orchestration flow,
 - dispatch reusable logic.
 
 Rules:
@@ -366,8 +347,6 @@ Rules:
 - minimal business logic,
 - no declarative configuration,
 - orchestration only.
-
----
 
 ### 2.3.1 Role: CLI
 
@@ -386,9 +365,7 @@ Responsibilities:
 - route commands,
 - connect blueprints with libraries.
 
-The CLI role acts as the primary execution inteface of the system.
-
----
+The CLI role acts as the primary execution interface of the system.
 
 ### 2.3.2 Role: Runner
 
@@ -405,11 +382,11 @@ Responsibilities:
 - execute predefined cases,
 - automate repetitive execution,
 - drive libraries using fixed input,
-- suport testing, validation, and automation workflows.
+- support testing, validation, and automation workflows.
 
 A Runner does not typically expose a rich user-facing interface (as opposed to CLI). Its primary purpose is execution of predefined flows.
 
-
+---
 
 # Summary
 
@@ -430,7 +407,7 @@ Component
 │   └── Domain Logic
 │
 └── Engine
-    └── CLI
+    ├── CLI
     └── Runner
 ```
 
