@@ -1,7 +1,7 @@
 # ADR-001: Architecture for Docker Configuration Management (Ops/Runtime Separation & Automation)
 
 ## Status
-Valid
+Superseded by ADR-006
 
 ## Date
 2026-04-17

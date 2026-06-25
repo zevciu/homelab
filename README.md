@@ -228,7 +228,7 @@ scripts/ → helper scripts and utilities
 
 # Current Progress
 
-## ADR-001 — Docker Configuration Automation
+## ADR-001 — Docker Configuration Automation [Superseded by ADR-006]
 Introduced a custom infrastructure automation toolkit featuring:
 - Ops/Runtime separation, automated config bootstrap workflows, state-driven lifecycle management, and configuration drift detection.
 
@@ -254,6 +254,12 @@ Introduced host-level nftables firewall integrated with Docker and Tailscale:
 - default-deny INPUT/FORWARD policies
 - interface-aware filtering (eth0, tailscale0, docker networks)
 - controlled forwarding for container networking
+
+## ADR-006 - Bash Script Architecture Model
+Introduced a formal Bash scripting architecture model for the repository:
+- script classification framework
+- self-contained and layered automation patterns
+- shared conventions and implementation templates
 
 # Future Plans
 

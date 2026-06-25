@@ -1,4 +1,4 @@
-# ADR-004: Stateful Host-based Firewall Architecture for the Application Server (Docker & Tailscale Integration)
+# ADR-005: Stateful Host-based Firewall Architecture for the Application Server (Docker & Tailscale Integration)
 
 ## Status
 Valid
